@@ -1,0 +1,5 @@
+*.swp
+*.result
+__pycache__
+reddit.db
+sqlout.txt

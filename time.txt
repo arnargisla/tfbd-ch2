@@ -1,0 +1,10 @@
+time for 1000000: 16.858s
+time for 5000000: 1m15.479s
+time for 10000000: 3m10.206s
+
+
+
+
+batch size optimization
+main.py 10 0m32.4s
+
