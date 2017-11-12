@@ -1,5 +1,3 @@
-
-
 all: build run
 
 run: Main.class

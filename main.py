@@ -3,7 +3,7 @@ import sqlite3
 import sys
 conn = sqlite3.connect("reddit.db")
 
-NUMBER_OF_SUBREDDITS_TO_CONSIDER = 100
+NUMBER_OF_SUBREDDITS_TO_CONSIDER = 10000000000000000000000000000000000
 try:
     NUMBER_OF_SUBREDDITS_TO_CONSIDER = int(sys.argv[1])
 except IndexError:
