@@ -8,3 +8,13 @@ time for 10000000: 3m10.206s
 batch size optimization
 main.py 10 0m32.4s
 
+
+domsdagur:
+main.py 10 .. 12.8s
+main.py 50 .. 1m58.184s
+main.py 10 only read data 0m3.245s
+main.py 100 .. 3m6.15s
+main.py 100 only read data 0m42.263s
+main.py 150 .. 3m55.150s
+main.py 250 .. 4m39.869s
+main.py 250 only read data 1m8.438s
