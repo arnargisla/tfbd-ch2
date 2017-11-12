@@ -1,5 +1,7 @@
 *.swp
+*.jar
 *.result
 __pycache__
 reddit.db
 sqlout.txt
+*.class

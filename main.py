@@ -11,14 +11,6 @@ except IndexError:
 except ValueError:
     pass
 
-BATCH_SIZE = 1000
-try:
-    BATCH_SIZE = int(sys.argv[2])
-except IndexError:
-    pass
-except ValueError:
-    pass
-
 def preprocess_subreddit(cursor, subreddit_id, roots, nodes):
     referenced_parents = {}
     while True:
