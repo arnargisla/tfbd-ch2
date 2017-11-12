@@ -14,14 +14,18 @@ public class Tree{
   public Tree(String val, Tree parent){
     this.val = val;
     this.parent = parent;
-    parent.addChild(this);
+    parent.add_child(this);
   }
 
   public void hello(){
     this.hello("");
   }
 
-  public void addChild(Tree child){
+  public void set_parent(Tree parent){
+    this.parent = parent;
+  }
+
+  public void add_child(Tree child){
     this.children.add(child);
   }
 
