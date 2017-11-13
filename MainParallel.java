@@ -7,66 +7,88 @@ import java.util.ArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+class MainParallel{
 
-class Main{
   class WorkerThread implements Runnable {
-    private String command;
+    private String id;
+    private String[] ids;
+    private String name;
+    private String[] names;
+    private Connection connection;
 
-    public WorkerThread(String s){
-      this.command=s;
+    public WorkerThread(String[] ids, String[] names, Connection c){
+      this.ids = ids;
+      this.names = names;
+      this.connection = c;
     }
 
     @Override
     public void run() {
-      System.out.println(Thread.currentThread().getName()+" Start. Command = "+command);
-      processCommand();
-      System.out.println(Thread.currentThread().getName()+" End.");
+      //System.out.println(Thread.currentThread().getName()+" Start. Command = "+id+" name: "+name);
+      for(int i=0; i<ids.length; i++){
+        this.id = this.ids[i];
+        this.name = this.names[i];
+        processCommand();
+      }
+      //System.out.println(Thread.currentThread().getName()+" End.");
     }
 
     private void processCommand() {
       try {
-        Thread.sleep(5000);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
+        Connection c = this.connection;
+        Statement stmt = c.createStatement();
+        stmt.setFetchSize(16000);
+        String psString = "SELECT id, parent_id FROM comments WHERE subreddit_id = ?";
+        PreparedStatement prepared = c.prepareStatement(psString);
+        prepared.setString(1, id);
+        ResultSet rs = prepared.executeQuery();
+        process_subreddit(rs, id, name);
+        rs.close();
+        stmt.close();
+      } catch (SQLException e) {
+        System.err.println(e.getMessage());
+      } catch (Exception e) {
+        System.err.println(e.getMessage());
       }
     }
 
     @Override
     public String toString(){
-      return this.command;
+      return this.id + " " + this.name;
     }
   }
 
   private int MAX_SUBREDDITS_TO_PROCESS;
 
   void processSubreddits(Connection c){
-    /*ExecutorService executor = Executors.newFixedThreadPool(5);
-    for (int i = 0; i < 10; i++) {
-      Runnable worker = new WorkerThread("" + i);
-      executor.execute(worker);
-    }
-    executor.shutdown();
-    while (!executor.isTerminated()) {
-    }
-    System.out.println("Finished all threads");*/
+    ExecutorService executor = Executors.newFixedThreadPool(8);
     int counter = 0;
+    int batch_size = 500;
     try {
       Statement stmt = c.createStatement();
-      Statement stmt2 = c.createStatement();
-      stmt2.setFetchSize(1000);
       ResultSet rs = stmt.executeQuery("SELECT id, name FROM subreddits");
-      String psString = "SELECT id, parent_id FROM comments WHERE subreddit_id = ?";
-      PreparedStatement prepared = c.prepareStatement(psString);
       while( rs.next() ){
-        counter++;
-        String id = rs.getString("id");
-        String name = rs.getString("name");
-        prepared.setString(1, id);
-        ResultSet rs2 = prepared.executeQuery();
-        process_subreddit(rs2, id, name);
+        ArrayList<String> names = new ArrayList<String>(batch_size);
+        ArrayList<String> ids = new ArrayList<String>(batch_size);
+        int i = 0;
+        do {
+          String id = rs.getString("id");
+          String name = rs.getString("name");
+          ids.add(id);
+          names.add(name);
+          i++;
+        } while ( i<batch_size && rs.next() );
+
+        Runnable worker = new WorkerThread(ids.toArray(new String[ids.size()]), names.toArray(new String[names.size()]), c);
+        executor.execute(worker);
+
         if(counter > this.MAX_SUBREDDITS_TO_PROCESS){
           break;
         }
+
+      }
+      executor.shutdown();
+      while (!executor.isTerminated()) {
       }
       rs.close();
       stmt.close();
@@ -77,14 +99,14 @@ class Main{
     }
   }
 
-  void process_subreddit(ResultSet rs, String subreddit_id, String subreddit_name) throws SQLException {
+  static void process_subreddit(ResultSet rs, String subreddit_id, String subreddit_name) throws SQLException {
     HashMap<String, Tree> roots = new HashMap<String, Tree>();
     HashMap<String, Tree> nodes = new HashMap<String, Tree>();
     preprocess_subreddit(rs, subreddit_id, roots, nodes);
     calculate_subreddit_stats(subreddit_id, subreddit_name, roots, nodes);
   }
 
-  void preprocess_subreddit(ResultSet rs, String subreddit_id, HashMap<String, Tree> roots, HashMap<String, Tree> nodes) throws SQLException {
+  static void preprocess_subreddit(ResultSet rs, String subreddit_id, HashMap<String, Tree> roots, HashMap<String, Tree> nodes) throws SQLException {
     HashMap<String, Set<String>> referenced_parents = new HashMap<String, Set<String>>();
     int counter = 0;
     while ( rs.next() ) {
@@ -121,7 +143,7 @@ class Main{
     }
   }
 
-  void calculate_subreddit_stats(String subreddit_id, String subreddit_name, HashMap<String, Tree> roots, HashMap<String, Tree> nodes){
+  static void calculate_subreddit_stats(String subreddit_id, String subreddit_name, HashMap<String, Tree> roots, HashMap<String, Tree> nodes){
     int max_depth = 0;
     int count = 0;
     int depth_acc = 0;
@@ -137,24 +159,24 @@ class Main{
     if( count != 0 ) {
       average_depth = ((double)depth_acc) / ((double)count);
     }
-    System.out.println(String.format("%.9f %s %s %d %d %d", average_depth, subreddit_id, subreddit_name, nodes.size(), roots.size(), max_depth));
+    System.out.println(String.format("%.9f %s %s %d %d %d %s", average_depth, subreddit_id, subreddit_name, nodes.size(), roots.size(), max_depth, Thread.currentThread().getName()));
 
   }
 
-  public Main(){
+  public MainParallel(){
     this(Integer.MAX_VALUE);
   }
 
-  public Main(int limit){
+  public MainParallel(int limit){
     this.MAX_SUBREDDITS_TO_PROCESS = limit;
   }
 
   public static void main(String[] args){
-    Main program = null;
+    MainParallel program = null;
     if(args.length < 1){
-      program = new Main();
+      program = new MainParallel();
     } else {
-      program = new Main(Integer.parseInt(args[0]));
+      program = new MainParallel(Integer.parseInt(args[0]));
     }
     try {
       Class.forName("org.sqlite.JDBC");

@@ -17,7 +17,7 @@ def preprocess_subreddit(cursor, subreddit_id, roots, nodes):
         rows = cursor.fetchmany()
         if not rows:
             break
-        for comment_id, parent_id in cursor:
+        for comment_id, parent_id in rows:
             is_top_level = False
             # top level comments have the prefix t3_
             if parent_id[1] == "3":
@@ -60,10 +60,8 @@ def calculate_subreddit_stats(sub_id, subreddit_name, roots, nodes):
     if(count != 0):
         average_depth = depth_acc * (1.0 / (1.0 * count))
 
-    print(average_depth, sub_id, subreddit_name, len(nodes), len(roots), max_depth)
+    print("{:.9f}".format(average_depth), sub_id, subreddit_name, len(nodes), len(roots), max_depth)
     sys.stdout.flush()
-    
-
 
 def process_subreddit(cursor, subreddit_id, subreddit_name):
     roots = {}
