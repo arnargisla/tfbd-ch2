@@ -23,21 +23,22 @@ def get_top_ten_authors_in_common():
     authors = {}
     authors_in_common = {}
 
+    batch_size = 10000
+    pc = 0
     list_of_subreddits = c.execute(''' SELECT id,name FROM subreddits; ''').fetchall()
-    progress_counter = 0
-    for sr in list_of_subreddits:
-        sr_id,sr_name = sr
-        c.execute(''' SELECT DISTINCT author_id FROM comments where subreddit_id = ? ''', [sr_id])
-        while True:
-            author_ids = c.fetchmany()
-            if not author_ids: break
-            for a_id in author_ids:
-                if sr_id in authors:
-                    authors[sr_id].append(a_id)
-                else:
-                    authors[sr_id] = []
-        progress_counter += 1
-        print("Processed " + str(progress_counter) + "/" + str(len(list_of_subreddits)) + " subreddits")
+    c.execute(''' SELECT * FROM comments; ''')
+    while True:
+        rows = c.fetchmany(batch_size)
+        if not rows: break
+        for row in rows:
+            a_id = row[1]
+            sr_id = row[2]
+            if sr_id in authors:
+                authors[sr_id].append(a_id)
+            else:
+                authors[sr_id] = [a_id]
+        pc += 1
+        print("Comments processed: " + str((batch_size*pc / 53000000)*100) + "%")
     for sr in authors.keys():
         for osr in filter(lambda x: x != sr,authors.keys()):
             key = (sr,osr)
@@ -47,10 +48,6 @@ def get_top_ten_authors_in_common():
                 authors_in_common[key] = len(set(authors[sr]).intersection(set(authors[osr])))
 
     print_results(authors_in_common)
-
-
-
-
 
 
 if __name__ == '__main__':
