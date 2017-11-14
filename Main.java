@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.ArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.Properties;
 
 
 class Main{
@@ -159,7 +160,12 @@ class Main{
     try {
       Class.forName("org.sqlite.JDBC");
 
-      Connection c = DriverManager.getConnection("jdbc:sqlite:reddit.db");
+      Properties config = new Properties();
+      config.setProperty("open_mode", "1"); // 1 = read only
+      config.setProperty("synchronous", "off");
+      config.setProperty("query_only", "true");
+
+      Connection c = DriverManager.getConnection("jdbc:sqlite:reddit.db", config);
       c.setAutoCommit(false);
       program.processSubreddits(c);
 

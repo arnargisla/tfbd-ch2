@@ -6,20 +6,23 @@ import java.util.Collections;
 import java.util.ArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.Properties;
 
 class MainParallel{
+  static final int number_of_threads = 8;
 
   class WorkerThread implements Runnable {
     private String id;
     private String[] ids;
     private String name;
     private String[] names;
+    private Connection[] connections;
     private Connection connection;
 
-    public WorkerThread(String[] ids, String[] names, Connection c){
+    public WorkerThread(String[] ids, String[] names, Connection[] c){
       this.ids = ids;
       this.names = names;
-      this.connection = c;
+      this.connections = c;
     }
 
     @Override
@@ -28,6 +31,9 @@ class MainParallel{
       for(int i=0; i<ids.length; i++){
         this.id = this.ids[i];
         this.name = this.names[i];
+        String threadName = Thread.currentThread().getName();
+        int id = Integer.parseInt(threadName.charAt(threadName.length() - 1) + "");
+        this.connection = this.connections[id-1];
         processCommand();
       }
       //System.out.println(Thread.currentThread().getName()+" End.");
@@ -60,10 +66,10 @@ class MainParallel{
 
   private int MAX_SUBREDDITS_TO_PROCESS;
 
-  void processSubreddits(Connection c){
-    ExecutorService executor = Executors.newFixedThreadPool(8);
+  void processSubreddits(Connection c, Connection[] connections){
+    ExecutorService executor = Executors.newFixedThreadPool(number_of_threads);
     int counter = 0;
-    int batch_size = 500;
+    int batch_size = 10;
     try {
       Statement stmt = c.createStatement();
       ResultSet rs = stmt.executeQuery("SELECT id, name FROM subreddits");
@@ -79,13 +85,12 @@ class MainParallel{
           i++;
         } while ( i<batch_size && rs.next() );
 
-        Runnable worker = new WorkerThread(ids.toArray(new String[ids.size()]), names.toArray(new String[names.size()]), c);
+        Runnable worker = new WorkerThread(ids.toArray(new String[ids.size()]), names.toArray(new String[names.size()]), connections);
         executor.execute(worker);
 
         if(counter > this.MAX_SUBREDDITS_TO_PROCESS){
           break;
         }
-
       }
       executor.shutdown();
       while (!executor.isTerminated()) {
@@ -180,10 +185,19 @@ class MainParallel{
     }
     try {
       Class.forName("org.sqlite.JDBC");
-
-      Connection c = DriverManager.getConnection("jdbc:sqlite:reddit.db");
+      Properties config = new Properties();
+      config.setProperty("open_mode", "1"); // 1 = read only
+      config.setProperty("synchronous", "off");
+      config.setProperty("query_only", "true");
+      Connection[] connections = new Connection[number_of_threads];
+      for(int i=0; i<connections.length; i++){
+        connections[i] = DriverManager.getConnection("jdbc:sqlite:reddit.db", config);
+        connections[i].setAutoCommit(false);
+      }
+      Connection c = DriverManager.getConnection("jdbc:sqlite:reddit.db", config);
       c.setAutoCommit(false);
-      program.processSubreddits(c);
+
+      program.processSubreddits(c, connections);
 
       c.close();
     } catch ( Exception e ) {
