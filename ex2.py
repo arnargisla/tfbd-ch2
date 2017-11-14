@@ -1,5 +1,5 @@
 import sqlite3
-import copy
+import sys
 from collections import Counter
 
 
@@ -23,32 +23,59 @@ def get_top_ten_authors_in_common():
     authors = {}
     authors_in_common = {}
 
-    batch_size = 10000
     pc = 0
-    list_of_subreddits = c.execute(''' SELECT id,name FROM subreddits; ''').fetchall()
     c.execute(''' SELECT * FROM comments; ''')
     while True:
-        rows = c.fetchmany(batch_size)
+        rows = c.fetchmany()
         if not rows: break
         for row in rows:
             a_id = row[1]
             sr_id = row[2]
             if sr_id in authors:
-                authors[sr_id].append(a_id)
+                authors[sr_id][a_id] = 1
             else:
-                authors[sr_id] = [a_id]
-        pc += 1
-        print("Comments processed: " + str((batch_size*pc / 53000000)*100) + "%")
+                authors[sr_id] = {a_id:1}
+            pc += 1
+            if pc % 1000000 == 0:
+                print("Comments processed: " + str((pc / 53500000)*100) + "%")
+                sys.stdout.flush()
+
+
+    outercounter = 0
     counter = 0
-    for sr in authors.keys():
-        counter += 1
-        print("Checking intersections for {}, {}%".format(sr, counter * 100.0/47000))
-        for osr in filter(lambda x: x != sr,authors.keys()):
-            key = (sr,osr)
-            if key in authors_in_common or tuple(reversed(key)) in authors_in_common:
+    skipped = 0
+    top10 = [0]*10
+    tenthtop = 0
+    for sr1 in authors.keys():
+        outercounter += 1
+        if outercounter % 100 == 0:
+            print("complete {}% skipped: {}, total: {}, pct skipped {}".format(sr1, counter * 100.0/47000, skipped, counter, skipped * 100.0/counter))
+            sys.stdout.flush()
+        authors1 = authors[sr1]
+        if len(authors[sr1]) < tenthtop:
+            skipped += 1
+            continue
+        for sr2 in authors.keys():
+            counter += 1
+            if sr2 <= sr1:
+                continue
+            if len(authors[sr2]) < tenthtop:
+                skipped += 1
+                continue
+            key = (sr1,sr2)
+            if key in authors_in_common:
                 continue
             else:
-                authors_in_common[key] = len(set(authors[sr]).intersection(set(authors[osr])))
+                authors2 = authors[sr2]
+                common = 0
+                for author1 in authors1:
+                    if author1 in authors2:
+                        common += 1
+                if common > tenthtop:
+                    top10 = sorted(top10[1:] + [common])
+                    tenthtop = top10[0]
+
+                authors_in_common[key] = common
 
     print_results(authors_in_common)
 
