@@ -49,7 +49,7 @@ def get_top_ten_authors_in_common():
     for sr1 in authors.keys():
         outercounter += 1
         if outercounter % 100 == 0:
-            print("complete {}% skipped: {}, total: {}, pct skipped {}".format(sr1, counter * 100.0/47000, skipped, counter, skipped * 100.0/counter))
+            print("complete {}% skipped: {}, total: {}, pct skipped {}".format(counter * 100.0/47000, skipped, counter, skipped * 100.0/counter))
             sys.stdout.flush()
         authors1 = authors[sr1]
         if len(authors[sr1]) < tenthtop:
