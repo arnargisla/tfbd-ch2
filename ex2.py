@@ -39,7 +39,10 @@ def get_top_ten_authors_in_common():
                 authors[sr_id] = [a_id]
         pc += 1
         print("Comments processed: " + str((batch_size*pc / 53000000)*100) + "%")
+    counter = 0
     for sr in authors.keys():
+        counter += 1
+        print("Checking intersections for {}, {}%".format(sr, counter * 100.0/47000))
         for osr in filter(lambda x: x != sr,authors.keys()):
             key = (sr,osr)
             if key in authors_in_common or tuple(reversed(key)) in authors_in_common:
